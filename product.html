@@ -1,6 +1,29 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
+    window.dataLayer = window.dataLayer || [];
+window.dataLayer.push({
+event: "view_item",
+ecommerce: {
+  item: {
+    id: "1",
+    name: "NovaTech Phantom X9",
+    price: 2499.99,
+    description:
+      "Portátil gaming definitivo con refrigeración cuántica y teclado neuroadaptativo",
+    image: "images/NovaTechPhantomX9.png",
+    category: "laptops",
+    stock: 10,
+    specs: {
+      processor: "OmegaCore i9-13X",
+      ram: "64GB HyperRAM",
+      storage: "4TB FusionDrive SSD",
+      gpu: "QuantumRTX 9080 Ultra",
+      screen: "17.3 pulgadas NanoLED 480Hz"
+    }
+  }
+}
+
     <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
