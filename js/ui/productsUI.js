@@ -15,7 +15,7 @@ constructor() {
   this.handleFilter = this.handleFilter.bind(this);
   this.handleSearch = this.handleSearch.bind(this);
   this.handleAddToCart = this.handleAddToCart.bind(this);
-  this.handleViewDetails = this.handleViewDetails.bind(this);
+  this.handleSelectItem = this.handleSelectItem.bind(this);
 
   this.setupEventListeners();
   this.renderProducts();
@@ -52,7 +52,8 @@ setupEventListeners() {
         const productId = parseInt(href.split('=')[1]);
         const product = this.products.find(p => p.id === productId);
         if (product) {
-          this.handleViewDetails(product, e);
+          // Cambiado de handleViewDetails a handleSelectItem
+          this.handleSelectItem(product, e);
         }
       }
     }
@@ -101,12 +102,16 @@ handleAddToCart(product) {
   }
 }
 
-handleViewDetails(product, event) {
-  // Enviar el evento view_item al dataLayer
+// Método renombrado y modificado para enviar select_item en lugar de view_item
+handleSelectItem(product, event) {
+  // Encontrar el índice del producto en la lista filtrada actual
+  const itemIndex = this.filteredProducts.findIndex(p => p.id === product.id);
+  
+  // Enviar el evento select_item al dataLayer
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
   window.dataLayer.push({
-    event: 'view_item',
+    event: 'select_item',
     ecommerce: {
       currency: 'USD',
       value: product.price,
@@ -116,15 +121,19 @@ handleViewDetails(product, event) {
         item_brand: product.brand || "The Cocktail Store",
         item_category: product.category,
         price: product.price,
-        quantity: 1
+        index: itemIndex >= 0 ? itemIndex : undefined,
+        quantity: 1,
+        item_list_name: this.currentCategory === 'all' ? 'Todos los productos' : this.currentCategory,
+        item_list_id: this.currentCategory
       }]
     }
   });
   
-  console.log('Evento view_item enviado:', {
-    event: 'view_item',
+  console.log('Evento select_item enviado:', {
+    event: 'select_item',
     product: product.name,
-    id: product.id
+    id: product.id,
+    list: this.currentCategory === 'all' ? 'Todos los productos' : this.currentCategory
   });
   
   // No prevenimos el evento por defecto para permitir la navegación a la página de detalles
@@ -272,5 +281,4 @@ sendViewItemListEvent() {
   }
 }
 }
-
 export const productsUI = new ProductsUI();
