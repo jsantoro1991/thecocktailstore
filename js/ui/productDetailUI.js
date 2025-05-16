@@ -30,6 +30,7 @@ initElements() {
   this.sku = document.querySelector(".sku");
   this.quantityInput = document.getElementById("quantity");
   this.addToCartBtn = document.querySelector(".add-to-cart");
+  this.checkoutBtn = document.querySelector(".button.button--primary.checkout");
 }
 
 renderProduct() {
@@ -115,6 +116,30 @@ setupEventListeners() {
       isAddingToCart = false;
     }, 2000);
   });
+  
+  // Añadir evento para el botón de checkout
+  if (this.checkoutBtn) {
+    // Usamos una bandera para evitar envíos duplicados
+    let isCheckingOut = false;
+    
+    this.checkoutBtn.addEventListener("click", (e) => {
+      // Evitar múltiples clics rápidos
+      if (isCheckingOut) return;
+      isCheckingOut = true;
+      
+      // Añadir el producto al carrito antes de proceder al checkout
+      cartService.addItem(this.product, this.quantity);
+      
+      // Enviar evento begin_checkout
+      this.sendBeginCheckoutEvent();
+      
+      // Permitir un pequeño retraso para que el evento se envíe antes de la navegación
+      setTimeout(() => {
+        isCheckingOut = false;
+        // La navegación se manejará por el onclick="window.location.href='checkout.html'"
+      }, 100);
+    });
+  }
 }
 
 // Método para enviar el evento view_item al cargar la página
@@ -168,6 +193,37 @@ sendAddToCartEvent() {
   
   console.log('Evento add_to_cart enviado:', {
     event: 'add_to_cart',
+    product: this.product.name,
+    id: this.product.id,
+    quantity: this.quantity,
+    value: itemValue
+  });
+}
+
+// Nuevo método para enviar el evento begin_checkout
+sendBeginCheckoutEvent() {
+  const itemValue = this.product.price * this.quantity;
+  
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
+  window.dataLayer.push({
+    event: 'begin_checkout',
+    ecommerce: {
+      currency: 'USD',
+      value: itemValue,
+      items: [{
+        item_id: this.product.id.toString(),
+        item_name: this.product.name,
+        item_brand: this.product.brand || "The Cocktail Store",
+        item_category: this.product.category,
+        price: this.product.price,
+        quantity: this.quantity
+      }]
+    }
+  });
+  
+  console.log('Evento begin_checkout enviado:', {
+    event: 'begin_checkout',
     product: this.product.name,
     id: this.product.id,
     quantity: this.quantity,
