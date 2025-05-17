@@ -40,163 +40,182 @@ setupEventListeners() {
     
     // Pequeño retraso para asegurar que el evento se envíe antes de la redirección
     setTimeout(() => {
-      window.location.href = "/payment.html";
+      window.location.href = "payment.html"; // CORREGIDO: Ruta relativa sin la barra inicial
     }, 100);
   });
 }
 
 renderOrderSummary() {
-  const cart = cartService.getItems();
+  try {
+    const cart = cartService.getItems() || [];
 
-  this.orderItems.innerHTML = cart
-    .map(
-      (item) => `
-      <div class="order-item">
-          <div class="item-image">
-              <img src="${item.image}" alt="${item.name}">
-              <span class="item-quantity">${item.quantity}</span>
-          </div>
-          <div class="item-info">
-              <h4>${item.name}</h4>
-              <p>$${item.price.toFixed(2)}</p>
-          </div>
-      </div>
-  `
-    )
-    .join("");
+    this.orderItems.innerHTML = cart
+      .map(
+        (item) => `
+        <div class="order-item">
+            <div class="item-image">
+                <img src="${item.image}" alt="${item.name}">
+                <span class="item-quantity">${item.quantity}</span>
+            </div>
+            <div class="item-info">
+                <h4>${item.name}</h4>
+                <p>$${item.price.toFixed(2)}</p>
+            </div>
+        </div>
+    `
+      )
+      .join("");
 
-  const subtotal = cartService.getTotal();
-  const shipping = checkoutService.getShippingCost();
-  const tax = checkoutService.getTaxAmount();
-  const total = subtotal + shipping + tax;
+    const subtotal = cartService.getTotal();
+    const shipping = checkoutService.getShippingCost();
+    const tax = checkoutService.getTaxAmount();
+    const total = subtotal + shipping + tax;
 
-  this.orderTotals.innerHTML = `
-      <div class="total-row">
-          <span>Subtotal</span>
-          <span>$${subtotal.toFixed(2)}</span>
-      </div>
-      <div class="total-row">
-          <span>Envío</span>
-          <span>$${shipping.toFixed(2)}</span>
-      </div>
-      <div class="total-row">
-          <span>Impuestos</span>
-          <span>$${tax.toFixed(2)}</span>
-      </div>
-      <div class="total-row total-final">
-          <span>Total</span>
-          <span>$${total.toFixed(2)}</span>
-      </div>
-  `;
+    this.orderTotals.innerHTML = `
+        <div class="total-row">
+            <span>Subtotal</span>
+            <span>$${subtotal.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+            <span>Envío</span>
+            <span>$${shipping.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+            <span>Impuestos</span>
+            <span>$${tax.toFixed(2)}</span>
+        </div>
+        <div class="total-row total-final">
+            <span>Total</span>
+            <span>$${total.toFixed(2)}</span>
+        </div>
+    `;
+  } catch (error) {
+    console.error("Error al renderizar el resumen del pedido:", error);
+    this.orderItems.innerHTML = "<p>Error al cargar los productos.</p>";
+    this.orderTotals.innerHTML = "<p>Error al calcular los totales.</p>";
+  }
 }
 
 prefillForm() {
-  const shippingInfo = checkoutService.shippingInfo;
+  try {
+    const shippingInfo = checkoutService.shippingInfo || {};
 
-  if (Object.keys(shippingInfo).length === 0) return;
+    if (Object.keys(shippingInfo).length === 0) return;
 
-  for (const [key, value] of Object.entries(shippingInfo)) {
-    const input = this.form.elements[key];
-    if (input) input.value = value;
+    for (const [key, value] of Object.entries(shippingInfo)) {
+      const input = this.form.elements[key];
+      if (input) input.value = value;
+    }
+
+    const shippingMethod = checkoutService.shippingMethod;
+    const radioButton = this.form.querySelector(
+      `input[name="shipping"][value="${shippingMethod}"]`
+    );
+    if (radioButton) radioButton.checked = true;
+  } catch (error) {
+    console.error("Error al precargar el formulario:", error);
   }
-
-  const shippingMethod = checkoutService.shippingMethod;
-  const radioButton = this.form.querySelector(
-    `input[name="shipping"][value="${shippingMethod}"]`
-  );
-  if (radioButton) radioButton.checked = true;
 }
 
 // Método para enviar el evento add_shipping_info
 sendAddShippingInfoEvent() {
-  const cart = cartService.getItems();
-  const subtotal = cartService.getTotal();
-  const shipping = checkoutService.getShippingCost();
-  const tax = checkoutService.getTaxAmount();
-  const total = subtotal + shipping + tax;
-  
-  // Preparar los items para el dataLayer
-  const items = cart.map((item, index) => {
-    return {
-      item_id: item.id.toString(),
-      item_name: item.name,
-      item_brand: item.brand || "The Cocktail Store",
-      item_category: item.category,
-      price: item.price,
-      quantity: item.quantity,
-      index: index
-    };
-  });
-  
-  // Enviar el evento al dataLayer
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
-  window.dataLayer.push({
-    event: 'add_shipping_info',
-    ecommerce: {
-      currency: 'USD',
+  try {
+    const cart = cartService.getItems() || [];
+    const subtotal = cartService.getTotal() || 0;
+    const shipping = checkoutService.getShippingCost() || 0;
+    const tax = checkoutService.getTaxAmount() || 0;
+    const total = subtotal + shipping + tax;
+    
+    // Preparar los items para el dataLayer
+    const items = cart.map((item, index) => {
+      return {
+        item_id: item.id.toString(),
+        item_name: item.name,
+        item_brand: item.brand || "The Cocktail Store",
+        item_category: item.category,
+        price: item.price,
+        quantity: item.quantity,
+        index: index
+      };
+    });
+    
+    // Enviar el evento al dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
+    window.dataLayer.push({
+      event: 'add_shipping_info',
+      ecommerce: {
+        currency: 'USD',
+        value: total,
+        shipping_tier: checkoutService.shippingMethod || 'standard',
+        items: items
+      }
+    });
+    
+    console.log('Evento add_shipping_info enviado:', {
+      event: 'add_shipping_info',
       value: total,
       shipping_tier: checkoutService.shippingMethod || 'standard',
-      items: items
-    }
-  });
-  
-  console.log('Evento add_shipping_info enviado:', {
-    event: 'add_shipping_info',
-    value: total,
-    shipping_tier: checkoutService.shippingMethod || 'standard',
-    items_count: items.length
-  });
+      items_count: items.length
+    });
+  } catch (error) {
+    console.error("Error al enviar el evento add_shipping_info:", error);
+  }
 }
 
 // Método para enviar el evento add_payment_info
 sendAddPaymentInfoEvent(shippingInfo, shippingMethod) {
-  const cart = cartService.getItems();
-  const subtotal = cartService.getTotal();
-  const shipping = checkoutService.getShippingCost();
-  const tax = checkoutService.getTaxAmount();
-  const total = subtotal + shipping + tax;
-  
-  // Preparar los items para el dataLayer
-  const items = cart.map((item, index) => {
-    return {
-      item_id: item.id.toString(),
-      item_name: item.name,
-      item_brand: item.brand || "The Cocktail Store",
-      item_category: item.category,
-      price: item.price,
-      quantity: item.quantity,
-      index: index
-    };
-  });
-  
-  // Enviar el evento al dataLayer
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
-  window.dataLayer.push({
-    event: 'add_payment_info',
-    ecommerce: {
-      currency: 'USD',
-      value: total,
-      payment_type: 'credit_card', // Valor por defecto, se podría actualizar si tienes opciones de pago
-      items: items,
-      shipping_tier: shippingMethod || 'standard',
-      // Información adicional opcional
-      customer_info: {
-        email: shippingInfo.email,
-        phone: shippingInfo.phone,
-        shipping_country: shippingInfo.country,
-        shipping_postal_code: shippingInfo.postal
+  try {
+    const cart = cartService.getItems() || [];
+    const subtotal = cartService.getTotal() || 0;
+    const shipping = checkoutService.getShippingCost() || 0;
+    const tax = checkoutService.getTaxAmount() || 0;
+    const total = subtotal + shipping + tax;
+    
+    // Preparar los items para el dataLayer
+    const items = cart.map((item, index) => {
+      return {
+        item_id: item.id.toString(),
+        item_name: item.name,
+        item_brand: item.brand || "The Cocktail Store",
+        item_category: item.category,
+        price: item.price,
+        quantity: item.quantity,
+        index: index
+      };
+    });
+    
+    // Enviar el evento al dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
+    window.dataLayer.push({
+      event: 'add_payment_info',
+      ecommerce: {
+        currency: 'USD',
+        value: total,
+        payment_type: 'credit_card', // Valor por defecto, se podría actualizar si tienes opciones de pago
+        items: items,
+        shipping_tier: shippingMethod || 'standard',
+        // Información adicional opcional
+        customer_info: {
+          email: shippingInfo.email || '',
+          phone: shippingInfo.phone || '',
+          shipping_country: shippingInfo.country || '',
+          shipping_postal_code: shippingInfo.postal || ''
+        }
       }
-    }
-  });
-  
-  console.log('Evento add_payment_info enviado:', {
-    event: 'add_payment_info',
-    value: total,
-    payment_type: 'credit_card',
-    shipping_tier: shippingMethod || 'standard',
-    items_count: items.length
-  });
+    });
+    
+    console.log('Evento add_payment_info enviado:', {
+      event: 'add_payment_info',
+      value: total,
+      payment_type: 'credit_card',
+      shipping_tier: shippingMethod || 'standard',
+      items_count: items.length
+    });
+  } catch (error) {
+    console.error("Error al enviar el evento add_payment_info:", error);
+  }
 }
 }
+
