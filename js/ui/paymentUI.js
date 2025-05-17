@@ -54,135 +54,151 @@ setupEventListeners() {
 }
 
 renderOrderSummary() {
-  const cart = cartService.getItems();
-  console.log("Cart items in payment:", cart);
+  try {
+    const cart = cartService.getItems() || [];
+    console.log("Cart items in payment:", cart);
 
-  this.orderItems.innerHTML = cart
-    .map(
-      (item) => `
-      <div class="order-item">
-          <div class="item-image">
-              <img src="${item.image}" alt="${item.name}">
-              <span class="item-quantity">${item.quantity}</span>
-          </div>
-          <div class="item-info">
-              <h4>${item.name}</h4>
-              <p>$${item.price.toFixed(2)}</p>
-          </div>
-      </div>
-  `
-    )
-    .join("");
+    this.orderItems.innerHTML = cart
+      .map(
+        (item) => `
+        <div class="order-item">
+            <div class="item-image">
+                <img src="${item.image}" alt="${item.name}">
+                <span class="item-quantity">${item.quantity}</span>
+            </div>
+            <div class="item-info">
+                <h4>${item.name}</h4>
+                <p>$${item.price.toFixed(2)}</p>
+            </div>
+        </div>
+    `
+      )
+      .join("");
 
-  const subtotal = cartService.getTotal();
-  const shipping = checkoutService.getShippingCost();
-  const tax = subtotal * 0.21;
-  const total = subtotal + shipping + tax;
+    const subtotal = cartService.getTotal() || 0;
+    const shipping = checkoutService.getShippingCost() || 0;
+    const tax = subtotal * 0.21;
+    const total = subtotal + shipping + tax;
 
-  this.orderTotals.innerHTML = `
-      <div class="total-row">
-          <span>Subtotal</span>
-          <span>$${subtotal.toFixed(2)}</span>
-      </div>
-      <div class="total-row">
-          <span>Envío</span>
-          <span>$${shipping.toFixed(2)}</span>
-      </div>
-      <div class="total-row">
-          <span>Impuestos</span>
-          <span>$${tax.toFixed(2)}</span>
-      </div>
-      <div class="total-row total-final">
-          <span>Total</span>
-          <span>$${total.toFixed(2)}</span>
-      </div>
-  `;
+    this.orderTotals.innerHTML = `
+        <div class="total-row">
+            <span>Subtotal</span>
+            <span>$${subtotal.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+            <span>Envío</span>
+            <span>$${shipping.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+            <span>Impuestos</span>
+            <span>$${tax.toFixed(2)}</span>
+        </div>
+        <div class="total-row total-final">
+            <span>Total</span>
+            <span>$${total.toFixed(2)}</span>
+        </div>
+    `;
+  } catch (error) {
+    console.error("Error al renderizar el resumen del pedido:", error);
+    this.orderItems.innerHTML = "<p>Error al cargar los productos.</p>";
+    this.orderTotals.innerHTML = "<p>Error al calcular los totales.</p>";
+  }
 }
 
 processPayment() {
-  const submitButton = this.form.querySelector('button[type="submit"]');
-  const originalText = submitButton.textContent;
-  submitButton.disabled = true;
-  submitButton.innerHTML =
-    '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+  try {
+    const submitButton = this.form.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> Procesando...';
 
-  setTimeout(() => {
-    checkoutService
-      .placeOrder()
-      .then((orderDetails) => {
-        console.log("Order details before redirect:", orderDetails);
-        window.location.href = `/confirmation.html?order=${orderDetails.orderNumber}`;
-      })
-      .catch((error) => {
-        alert("Error al procesar el pago: " + error.message);
-        submitButton.disabled = false;
-        submitButton.textContent = originalText;
-      });
-  }, 2000);
+    setTimeout(() => {
+      checkoutService
+        .placeOrder()
+        .then((orderDetails) => {
+          console.log("Order details before redirect:", orderDetails);
+          // CORREGIDO: Ruta relativa sin la barra inicial
+          window.location.href = `confirmation.html?order=${orderDetails.orderNumber}`;
+        })
+        .catch((error) => {
+          alert("Error al procesar el pago: " + error.message);
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        });
+    }, 2000);
+  } catch (error) {
+    console.error("Error al procesar el pago:", error);
+    alert("Error inesperado al procesar el pago. Por favor, inténtalo de nuevo.");
+  }
 }
 
 // Método para enviar el evento purchase
 sendPurchaseEvent(paymentMethod) {
-  const cart = cartService.getItems();
-  const subtotal = cartService.getTotal();
-  const shipping = checkoutService.getShippingCost();
-  const tax = subtotal * 0.21;
-  const total = subtotal + shipping + tax;
-  
-  // Generar un ID de transacción único
-  const transactionId = 'TCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-  
-  // Obtener información de envío
-  const shippingInfo = checkoutService.shippingInfo || {};
-  
-  // Preparar los items para el dataLayer
-  const items = cart.map((item, index) => {
-    return {
-      item_id: item.id.toString(),
-      item_name: item.name,
-      item_brand: item.brand || "The Cocktail Store",
-      item_category: item.category,
-      price: item.price,
-      quantity: item.quantity,
-      index: index
-    };
-  });
-  
-  // Enviar el evento al dataLayer
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
-  window.dataLayer.push({
-    event: 'purchase',
-    ecommerce: {
-      transaction_id: transactionId,
-      value: total,
-      tax: tax,
-      shipping: shipping,
-      currency: 'USD',
-      coupon: '', // Si tienes sistema de cupones, añadirlo aquí
-      items: items,
-      // Información adicional
-      payment_type: paymentMethod,
-      shipping_tier: checkoutService.shippingMethod || 'standard',
-      customer: {
-        email: shippingInfo.email || '',
-        phone: shippingInfo.phone || '',
-        shipping_address: {
-          address: shippingInfo.address || '',
-          city: shippingInfo.city || '',
-          country: shippingInfo.country || '',
-          postal_code: shippingInfo.postal || ''
+  try {
+    const cart = cartService.getItems() || [];
+    const subtotal = cartService.getTotal() || 0;
+    const shipping = checkoutService.getShippingCost() || 0;
+    const tax = subtotal * 0.21;
+    const total = subtotal + shipping + tax;
+    
+    // Generar un ID de transacción único
+    const transactionId = 'TCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    
+    // Obtener información de envío
+    const shippingInfo = checkoutService.shippingInfo || {};
+    
+    // Preparar los items para el dataLayer
+    const items = cart.map((item, index) => {
+      return {
+        item_id: item.id.toString(),
+        item_name: item.name,
+        item_brand: item.brand || "The Cocktail Store",
+        item_category: item.category,
+        price: item.price,
+        quantity: item.quantity,
+        index: index
+      };
+    });
+    
+    // Enviar el evento al dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ ecommerce: null }); // Limpiar el objeto ecommerce anterior
+    window.dataLayer.push({
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: transactionId,
+        value: total,
+        tax: tax,
+        shipping: shipping,
+        currency: 'USD',
+        coupon: '', // Si tienes sistema de cupones, añadirlo aquí
+        items: items,
+        // Información adicional
+        payment_type: paymentMethod,
+        shipping_tier: checkoutService.shippingMethod || 'standard',
+        customer: {
+          email: shippingInfo.email || '',
+          phone: shippingInfo.phone || '',
+          shipping_address: {
+            address: shippingInfo.address || '',
+            city: shippingInfo.city || '',
+            country: shippingInfo.country || '',
+            postal_code: shippingInfo.postal || ''
+          }
         }
       }
-    }
-  });
-  
-  console.log('Evento purchase enviado:', {
-    event: 'purchase',
-    transaction_id: transactionId,
-    value: total.toFixed(2),
-    items_count: items.length,
-    payment_type: paymentMethod
-  });
+    });
+    
+    console.log('Evento purchase enviado:', {
+      event: 'purchase',
+      transaction_id: transactionId,
+      value: total.toFixed(2),
+      items_count: items.length,
+      payment_type: paymentMethod
+    });
+  } catch (error) {
+    console.error("Error al enviar el evento purchase:", error);
+  }
 }
 }
